@@ -277,6 +277,18 @@
             return date.toLocaleDateString('pl-PL');
         }
 
+        // Funkcja do zamiany polskich znaków na bezpieczne dla PDF
+        function sanitizeTextForPDF(text) {
+            if (!text) return text;
+            
+            const polishChars = {
+                'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
+                'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z'
+            };
+            
+            return text.replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, char => polishChars[char] || char);
+        }
+
         // Funkcja do pobierania i modyfikowania oryginalnego PDF
         async function generatePDF(formData) {
             try {
@@ -377,14 +389,14 @@
                     return false;
                 }
 
-                // Wypełnij pola formularza
+                // Wypełnij pola formularza (z sanityzacją polskich znaków)
                 let filledFields = 0;
                 
-                if (fillField('fullName', formData.fullName)) filledFields++;
-                if (fillField('contactInfo', formData.contactInfo)) filledFields++;
-                if (fillField('recipient', formData.recipient)) filledFields++;
-                if (fillField('applicationDate', formatDateToPL(formData.applicationDate))) filledFields++;
-                if (formData.purpose && fillField('purpose', formData.purpose)) filledFields++;
+                if (fillField('fullName', sanitizeTextForPDF(formData.fullName))) filledFields++;
+                if (fillField('contactInfo', sanitizeTextForPDF(formData.contactInfo))) filledFields++;
+                if (fillField('recipient', sanitizeTextForPDF(formData.recipient))) filledFields++;
+                if (fillField('applicationDate', sanitizeTextForPDF(formatDateToPL(formData.applicationDate)))) filledFields++;
+                if (formData.purpose && fillField('purpose', sanitizeTextForPDF(formData.purpose))) filledFields++;
 
                 // Jeśli nie udało się wypełnić żadnych pól, dodaj dane na pierwszej stronie
                 if (filledFields === 0) {
@@ -397,7 +409,7 @@
                     // Dodaj dane jako tekst na stronie (fallback)
                     const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
                     
-                    firstPage.drawText(`DANE WYPEŁNIONE AUTOMATYCZNIE:`, {
+                    firstPage.drawText(sanitizeTextForPDF(`DANE WYPELNIONE AUTOMATYCZNIE:`), {
                         x: 50,
                         y: height - 100,
                         size: 12,
@@ -405,7 +417,7 @@
                         color: PDFLib.rgb(0, 0, 1), // Niebieski kolor
                     });
 
-                    firstPage.drawText(`Wnioskodawca: ${formData.fullName}`, {
+                    firstPage.drawText(sanitizeTextForPDF(`Wnioskodawca: ${formData.fullName}`), {
                         x: 50,
                         y: height - 120,
                         size: 11,
@@ -413,7 +425,7 @@
                         color: PDFLib.rgb(0, 0, 1),
                     });
 
-                    firstPage.drawText(`Kontakt: ${formData.contactInfo}`, {
+                    firstPage.drawText(sanitizeTextForPDF(`Kontakt: ${formData.contactInfo}`), {
                         x: 50,
                         y: height - 140,
                         size: 11,
@@ -421,7 +433,7 @@
                         color: PDFLib.rgb(0, 0, 1),
                     });
 
-                    firstPage.drawText(`Adresat: ${formData.recipient}`, {
+                    firstPage.drawText(sanitizeTextForPDF(`Adresat: ${formData.recipient}`), {
                         x: 50,
                         y: height - 160,
                         size: 11,
@@ -429,7 +441,7 @@
                         color: PDFLib.rgb(0, 0, 1),
                     });
 
-                    firstPage.drawText(`Data: ${formatDateToPL(formData.applicationDate)}`, {
+                    firstPage.drawText(sanitizeTextForPDF(`Data: ${formatDateToPL(formData.applicationDate)}`), {
                         x: 50,
                         y: height - 180,
                         size: 11,
@@ -438,7 +450,7 @@
                     });
 
                     if (formData.purpose) {
-                        firstPage.drawText(`Cel: ${formData.purpose}`, {
+                        firstPage.drawText(sanitizeTextForPDF(`Cel: ${formData.purpose}`), {
                             x: 50,
                             y: height - 200,
                             size: 11,
