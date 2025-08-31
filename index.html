@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Formularza P - Ceny Transakcyjne Mieszkań</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .form-selector {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        .form-tab {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .form-tab:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .form-tab.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        .form-title {
+            color: #667eea;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .form-description {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .auto-filled {
+            background-color: #f8f9ff;
+            border-color: #667eea;
+        }
+
+        .auto-filled-label {
+            color: #667eea;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .auto-filled-label::before {
+            content: "✓";
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .info-box {
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .form-container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .form-selector {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Generator Formularza P</h1>
+            <p>Łatwe wypełnianie wniosku o udostępnienie materiałów powiatowego zasobu geodezyjnego</p>
+        </div>
+
+        <div class="form-container">
+            <!-- Formularz P -->
+            <div id="form-p" class="form-section active">
+                <h2 class="form-title">Formularz P</h2>
+                <p class="form-description">Wniosek o udostępnienie materiałów powiatowego zasobu geodezyjnego i kartograficznego</p>
+                
+                <div class="info-box">
+                    <h3>Co to jest formularz P?</h3>
+                    <p>Formularz P służy do składania wniosku o udostępnienie materiałów z powiatowego zasobu geodezyjnego i kartograficznego. Dzięki niemu możesz uzyskać dostęp do danych o cenach transakcyjnych nieruchomości.</p>
+                </div>
+
+                <form id="formP">
+                    <div class="form-group">
+                        <label for="fullName">Imię i nazwisko wnioskodawcy <span class="required">*</span></label>
+                        <input type="text" id="fullName" name="fullName" required placeholder="Wprowadź swoje imię i nazwisko">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contactInfo">Numer kontaktowy lub adres e-mail <span class="required">*</span></label>
+                        <input type="text" id="contactInfo" name="contactInfo" required placeholder="Numer telefonu lub adres e-mail">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="recipient">Adresat wniosku</label>
+                        <input type="text" id="recipient" name="recipient" value="Kraków" class="auto-filled" readonly>
+                        <div class="auto-filled-label">Wypełnione automatycznie</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="applicationDate">Data złożenia wniosku</label>
+                        <input type="date" id="applicationDate" name="applicationDate" class="auto-filled" readonly>
+                        <div class="auto-filled-label">Wypełnione automatycznie - dzisiejsza data</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="purpose">Cel wykorzystania materiałów (opcjonalne)</label>
+                        <textarea id="purpose" name="purpose" rows="3" placeholder="Opisz w jakim celu potrzebujesz dostępu do materiałów"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn" id="generateBtn">
+                        <span id="btnText">Pobierz wypełniony formularz P</span>
+                        <span id="btnLoader" style="display: none;">Generuję PDF...</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Automatyczne wypełnienie dzisiejszej daty
+        function setTodayDate() {
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('applicationDate').value = formattedDate;
+        }
+
+        // Formatowanie daty do polskiego formatu
+        function formatDateToPL(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pl-PL');
+        }
+
+        // Funkcja do pobierania i modyfikowania oryginalnego PDF
+        async function generatePDF(formData) {
+            try {
+                // Pokaż loader
+                document.getElementById('btnText').style.display = 'none';
+                document.getElementById('btnLoader').style.display = 'inline';
+                document.getElementById('generateBtn').disabled = true;
+
+                let existingPdfBytes;
+                
+                // Spróbuj pobrać PDF - różne metody dla różnych środowisk
+                try {
+                    // Metoda 1: Bezpośrednie pobieranie (działa na GitHub Pages)
+                    const response = await fetch('./Formularz P - wniosek o udostępnienie materiałów powiatowego zasobu geodezyjnego i kartograficznego_5472334533417256307_1.pdf');
+                    if (!response.ok) {
+                        throw new Error('Fetch failed');
+                    }
+                    existingPdfBytes = await response.arrayBuffer();
+                } catch (fetchError) {
+                    console.log('Fetch nie działa, próbuję alternatywnej metody...');
+                    
+                    // Metoda 2: Dla lokalnego użycia - poproś użytkownika o plik
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.accept = '.pdf';
+                    
+                    const filePromise = new Promise((resolve, reject) => {
+                        fileInput.onchange = (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (e) => resolve(e.target.result);
+                                reader.onerror = reject;
+                                reader.readAsArrayBuffer(file);
+                            } else {
+                                reject(new Error('Nie wybrano pliku'));
+                            }
+                        };
+                    });
+                    
+                    alert('Nie można automatycznie pobrać wzorcowego PDF. Wybierz plik "Formularz P" z dysku.');
+                    fileInput.click();
+                    existingPdfBytes = await filePromise;
+                }
+
+                // Załaduj oryginalny PDF
+                const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+                const form = pdfDoc.getForm();
+
+                // Pobierz wszystkie pola formularza dla debugowania
+                const fields = form.getFields();
+                console.log('Dostępne pola w PDF:', fields.map(field => field.getName()));
+
+                // Lista możliwych nazw pól w formularzu
+                const fieldMappings = {
+                    fullName: [
+                        'imie_nazwisko', 'wnioskodawca', 'dane_wnioskodawcy', 'nazwisko_imie', 
+                        'fullname', 'name', 'applicant', 'petitioner', 'Text1', 'Text2', 'Text3'
+                    ],
+                    contactInfo: [
+                        'kontakt', 'telefon', 'email', 'dane_kontaktowe', 'contact', 'phone',
+                        'tel', 'mail', 'Text4', 'Text5', 'Text6'
+                    ],
+                    recipient: [
+                        'adresat', 'do', 'recipient', 'organ', 'addressee', 'to',
+                        'Text7', 'Text8', 'Text9'
+                    ],
+                    applicationDate: [
+                        'data', 'data_zlozenia', 'date', 'data_wniosku', 'application_date',
+                        'Text10', 'Text11', 'Text12'
+                    ],
+                    purpose: [
+                        'cel', 'przeznaczenie', 'purpose', 'uzasadnienie', 'reason',
+                        'Text13', 'Text14', 'Text15'
+                    ]
+                };
+
+                // Funkcja do znajdowania i wypełniania pola
+                function fillField(dataKey, value) {
+                    if (!value) return false;
+                    
+                    const possibleNames = fieldMappings[dataKey] || [dataKey];
+                    
+                    for (const fieldName of possibleNames) {
+                        try {
+                            // Próbuj znaleźć pole tekstowe
+                            const field = form.getTextField(fieldName);
+                            field.setText(value);
+                            console.log(`✓ Wypełniono pole ${fieldName}: ${value}`);
+                            return true;
+                        } catch (e) {
+                            // Pole nie istnieje lub nie jest polem tekstowym, próbuj dalej
+                            continue;
+                        }
+                    }
+                    
+                    console.warn(`⚠ Nie znaleziono pola dla: ${dataKey}`);
+                    return false;
+                }
+
+                // Wypełnij pola formularza
+                let filledFields = 0;
+                
+                if (fillField('fullName', formData.fullName)) filledFields++;
+                if (fillField('contactInfo', formData.contactInfo)) filledFields++;
+                if (fillField('recipient', formData.recipient)) filledFields++;
+                if (fillField('applicationDate', formatDateToPL(formData.applicationDate))) filledFields++;
+                if (formData.purpose && fillField('purpose', formData.purpose)) filledFields++;
+
+                // Jeśli nie udało się wypełnić żadnych pól, dodaj dane na pierwszej stronie
+                if (filledFields === 0) {
+                    console.log('Nie znaleziono pól formularza, dodaję dane jako tekst na stronie...');
+                    
+                    const pages = pdfDoc.getPages();
+                    const firstPage = pages[0];
+                    const { width, height } = firstPage.getSize();
+
+                    // Dodaj dane jako tekst na stronie (fallback)
+                    const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+                    
+                    firstPage.drawText(`DANE WYPEŁNIONE AUTOMATYCZNIE:`, {
+                        x: 50,
+                        y: height - 100,
+                        size: 12,
+                        font: font,
+                        color: PDFLib.rgb(0, 0, 1), // Niebieski kolor
+                    });
+
+                    firstPage.drawText(`Wnioskodawca: ${formData.fullName}`, {
+                        x: 50,
+                        y: height - 120,
+                        size: 11,
+                        font: font,
+                        color: PDFLib.rgb(0, 0, 1),
+                    });
+
+                    firstPage.drawText(`Kontakt: ${formData.contactInfo}`, {
+                        x: 50,
+                        y: height - 140,
+                        size: 11,
+                        font: font,
+                        color: PDFLib.rgb(0, 0, 1),
+                    });
+
+                    firstPage.drawText(`Adresat: ${formData.recipient}`, {
+                        x: 50,
+                        y: height - 160,
+                        size: 11,
+                        font: font,
+                        color: PDFLib.rgb(0, 0, 1),
+                    });
+
+                    firstPage.drawText(`Data: ${formatDateToPL(formData.applicationDate)}`, {
+                        x: 50,
+                        y: height - 180,
+                        size: 11,
+                        font: font,
+                        color: PDFLib.rgb(0, 0, 1),
+                    });
+
+                    if (formData.purpose) {
+                        firstPage.drawText(`Cel: ${formData.purpose}`, {
+                            x: 50,
+                            y: height - 200,
+                            size: 11,
+                            font: font,
+                            color: PDFLib.rgb(0, 0, 1),
+                        });
+                    }
+                }
+
+                // Zapisz zmodyfikowany PDF
+                const pdfBytes = await pdfDoc.save();
+
+                // Pobierz plik
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `Formularz_P_${formData.fullName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                // Pokaż sukces
+                alert('PDF został wygenerowany i pobrany!');
+
+            } catch (error) {
+                console.error('Błąd podczas generowania PDF:', error);
+                alert('Wystąpił błąd podczas generowania PDF: ' + error.message);
+            } finally {
+                // Ukryj loader
+                document.getElementById('btnText').style.display = 'inline';
+                document.getElementById('btnLoader').style.display = 'none';
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+
+        // Obsługa formularza P
+        document.getElementById('formP').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                fullName: document.getElementById('fullName').value,
+                contactInfo: document.getElementById('contactInfo').value,
+                recipient: document.getElementById('recipient').value,
+                applicationDate: document.getElementById('applicationDate').value,
+                purpose: document.getElementById('purpose').value
+            };
+            
+            // Generuj i pobierz PDF
+            generatePDF(formData);
+        });
+
+        // Walidacja w czasie rzeczywistym
+        function validateField(field) {
+            if (field.required && !field.value.trim()) {
+                field.style.borderColor = '#e74c3c';
+                return false;
+            } else {
+                field.style.borderColor = '#4CAF50';
+                return true;
+            }
+        }
+
+        // Dodaj walidację do wszystkich wymaganych pól
+        document.querySelectorAll('input[required]').forEach(field => {
+            field.addEventListener('blur', () => validateField(field));
+            field.addEventListener('input', () => {
+                if (field.value.trim()) {
+                    field.style.borderColor = '#4CAF50';
+                }
+            });
+        });
+
+        // Inicjalizacja
+        document.addEventListener('DOMContentLoaded', function() {
+            setTodayDate();
+        });
+    </script>
+</body>
+</html>
