@@ -277,16 +277,27 @@
             return date.toLocaleDateString('pl-PL');
         }
 
-        // Funkcja do zamiany polskich znaków na bezpieczne dla PDF
-        function sanitizeTextForPDF(text) {
-            if (!text) return text;
-            
-            const polishChars = {
-                'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
-                'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z'
-            };
-            
-            return text.replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, char => polishChars[char] || char);
+        // Funkcja do bezpiecznego dodawania tekstu z polskimi znakami
+        async function addTextToPDF(page, text, x, y, size, font, color) {
+            try {
+                // Próbuj dodać tekst z polskimi znakami
+                page.drawText(text, { x, y, size, font, color });
+                return true;
+            } catch (error) {
+                if (error.message.includes('cannot encode')) {
+                    console.warn(`Nie można dodać tekstu z polskimi znakami: ${text}`);
+                    // Fallback - zamień polskie znaki tylko w przypadku błędu
+                    const polishChars = {
+                        'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
+                        'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z'
+                    };
+                    const sanitizedText = text.replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, char => polishChars[char] || char);
+                    page.drawText(sanitizedText, { x, y, size, font, color });
+                    return false;
+                } else {
+                    throw error;
+                }
+            }
         }
 
         // Funkcja do pobierania i modyfikowania oryginalnego PDF
@@ -366,7 +377,7 @@
                     ]
                 };
 
-                // Funkcja do znajdowania i wypełniania pola
+                // Funkcja do znajdowania i wypełniania pola (z obsługą polskich znaków)
                 function fillField(dataKey, value) {
                     if (!value) return false;
                     
@@ -376,9 +387,28 @@
                         try {
                             // Próbuj znaleźć pole tekstowe
                             const field = form.getTextField(fieldName);
-                            field.setText(value);
-                            console.log(`✓ Wypełniono pole ${fieldName}: ${value}`);
-                            return true;
+                            
+                            try {
+                                // Próbuj wypełnić z polskimi znakami
+                                field.setText(value);
+                                console.log(`✓ Wypełniono pole ${fieldName}: ${value}`);
+                                return true;
+                            } catch (encodingError) {
+                                if (encodingError.message.includes('cannot encode')) {
+                                    console.warn(`⚠ Polskie znaki nie obsługiwane w polu ${fieldName}, używam fallback`);
+                                    // Fallback - zamień polskie znaki tylko w przypadku błędu
+                                    const polishChars = {
+                                        'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
+                                        'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z'
+                                    };
+                                    const sanitizedValue = value.replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, char => polishChars[char] || char);
+                                    field.setText(sanitizedValue);
+                                    console.log(`✓ Wypełniono pole ${fieldName} (bez polskich znaków): ${sanitizedValue}`);
+                                    return true;
+                                } else {
+                                    throw encodingError;
+                                }
+                            }
                         } catch (e) {
                             // Pole nie istnieje lub nie jest polem tekstowym, próbuj dalej
                             continue;
@@ -389,14 +419,14 @@
                     return false;
                 }
 
-                // Wypełnij pola formularza (z sanityzacją polskich znaków)
+                // Wypełnij pola formularza (zachowując polskie znaki)
                 let filledFields = 0;
                 
-                if (fillField('fullName', sanitizeTextForPDF(formData.fullName))) filledFields++;
-                if (fillField('contactInfo', sanitizeTextForPDF(formData.contactInfo))) filledFields++;
-                if (fillField('recipient', sanitizeTextForPDF(formData.recipient))) filledFields++;
-                if (fillField('applicationDate', sanitizeTextForPDF(formatDateToPL(formData.applicationDate)))) filledFields++;
-                if (formData.purpose && fillField('purpose', sanitizeTextForPDF(formData.purpose))) filledFields++;
+                if (fillField('fullName', formData.fullName)) filledFields++;
+                if (fillField('contactInfo', formData.contactInfo)) filledFields++;
+                if (fillField('recipient', formData.recipient)) filledFields++;
+                if (fillField('applicationDate', formatDateToPL(formData.applicationDate))) filledFields++;
+                if (formData.purpose && fillField('purpose', formData.purpose)) filledFields++;
 
                 // Jeśli nie udało się wypełnić żadnych pól, dodaj dane na pierwszej stronie
                 if (filledFields === 0) {
@@ -406,57 +436,24 @@
                     const firstPage = pages[0];
                     const { width, height } = firstPage.getSize();
 
-                    // Dodaj dane jako tekst na stronie (fallback)
-                    const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+                    // Dodaj dane jako tekst na stronie (fallback) - próbuj z polskimi znakami
+                    let font;
+                    try {
+                        // Próbuj użyć czcionki obsługującej Unicode
+                        font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+                    } catch (e) {
+                        // Fallback do podstawowej czcionki
+                        font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+                    }
                     
-                    firstPage.drawText(sanitizeTextForPDF(`DANE WYPELNIONE AUTOMATYCZNIE:`), {
-                        x: 50,
-                        y: height - 100,
-                        size: 12,
-                        font: font,
-                        color: PDFLib.rgb(0, 0, 1), // Niebieski kolor
-                    });
-
-                    firstPage.drawText(sanitizeTextForPDF(`Wnioskodawca: ${formData.fullName}`), {
-                        x: 50,
-                        y: height - 120,
-                        size: 11,
-                        font: font,
-                        color: PDFLib.rgb(0, 0, 1),
-                    });
-
-                    firstPage.drawText(sanitizeTextForPDF(`Kontakt: ${formData.contactInfo}`), {
-                        x: 50,
-                        y: height - 140,
-                        size: 11,
-                        font: font,
-                        color: PDFLib.rgb(0, 0, 1),
-                    });
-
-                    firstPage.drawText(sanitizeTextForPDF(`Adresat: ${formData.recipient}`), {
-                        x: 50,
-                        y: height - 160,
-                        size: 11,
-                        font: font,
-                        color: PDFLib.rgb(0, 0, 1),
-                    });
-
-                    firstPage.drawText(sanitizeTextForPDF(`Data: ${formatDateToPL(formData.applicationDate)}`), {
-                        x: 50,
-                        y: height - 180,
-                        size: 11,
-                        font: font,
-                        color: PDFLib.rgb(0, 0, 1),
-                    });
+                    await addTextToPDF(firstPage, `DANE WYPEŁNIONE AUTOMATYCZNIE:`, 50, height - 100, 12, font, PDFLib.rgb(0, 0, 1));
+                    await addTextToPDF(firstPage, `Wnioskodawca: ${formData.fullName}`, 50, height - 120, 11, font, PDFLib.rgb(0, 0, 1));
+                    await addTextToPDF(firstPage, `Kontakt: ${formData.contactInfo}`, 50, height - 140, 11, font, PDFLib.rgb(0, 0, 1));
+                    await addTextToPDF(firstPage, `Adresat: ${formData.recipient}`, 50, height - 160, 11, font, PDFLib.rgb(0, 0, 1));
+                    await addTextToPDF(firstPage, `Data: ${formatDateToPL(formData.applicationDate)}`, 50, height - 180, 11, font, PDFLib.rgb(0, 0, 1));
 
                     if (formData.purpose) {
-                        firstPage.drawText(sanitizeTextForPDF(`Cel: ${formData.purpose}`), {
-                            x: 50,
-                            y: height - 200,
-                            size: 11,
-                            font: font,
-                            color: PDFLib.rgb(0, 0, 1),
-                        });
+                        await addTextToPDF(firstPage, `Cel: ${formData.purpose}`, 50, height - 200, 11, font, PDFLib.rgb(0, 0, 1));
                     }
                 }
 
